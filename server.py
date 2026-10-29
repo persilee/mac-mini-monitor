@@ -118,9 +118,42 @@ def parse_therm():
 
 
 def parse_uptime():
+    """uptime 原始格式: '8:18'(HH:MM=8小时18分) / '8 mins' / '3 days, 2:34'
+    转成无歧义的 '8小时18分' / '3天2小时34分'"""
     out = run("uptime")
+    if not out:
+        return "--"
     m = re.search(r"up\s+(.+?),\s+\d+\s+user", out)
-    return m.group(1).strip() if m else (out or "--")
+    raw = m.group(1).strip() if m else ""
+    if not raw:
+        return "--"
+
+    days = 0
+    dm = re.search(r"(\d+)\s+days?", raw)
+    if dm:
+        days = int(dm.group(1))
+
+    hm = re.search(r"(\d+):(\d+)", raw)
+    if hm:
+        h, mi = int(hm.group(1)), int(hm.group(2))
+        parts = []
+        if days:
+            parts.append("%d天" % days)
+        if h:
+            parts.append("%d小时" % h)
+        if mi:
+            parts.append("%d分" % mi)
+        return " ".join(parts) if parts else raw
+
+    mm = re.search(r"(\d+)\s*mins?", raw)
+    if mm:
+        return "%d分钟" % int(mm.group(1))
+
+    sm = re.search(r"(\d+)\s*secs?", raw)
+    if sm:
+        return "%d秒" % int(sm.group(1))
+
+    return raw
 
 
 def collect():
