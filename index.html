@@ -66,25 +66,35 @@
     min-height: 0;
   }
 
-  /* 环形进度（渐变） */
+  /* 环形进度（SVG 圆头端点 + 渐变） */
   .ring {
     width: 210px; height: 210px;
-    border-radius: 50%;
-    background: conic-gradient(var(--purple) 0deg, var(--pink) 0deg, var(--line) 0deg 360deg);
-    display: flex; align-items: center; justify-content: center;
-    flex: 0 0 auto;
     position: relative;
-    filter: drop-shadow(0 0 14px rgba(189,147,249,0.35));
+    flex: 0 0 auto;
   }
-  .ring::after {
-    content: ""; position: absolute;
-    inset: 16px;
-    border-radius: 50%;
-    background: var(--bg1);
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.55);
+  .ring-svg {
+    width: 100%; height: 100%;
+    transform: rotate(-90deg);            /* 起点在 12 点方向 */
+    filter: drop-shadow(0 0 12px rgba(189,147,249,0.3));
+  }
+  .ring-svg .rt {                          /* 轨道 */
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 11;
+  }
+  .ring-svg .rp {                          /* 进度(圆头) */
+    fill: none;
+    stroke: url(#g-cpu);
+    stroke-width: 11;
+    stroke-linecap: round;                 /* 圆角端点 */
+    stroke-dasharray: 0 276.46;            /* 周长 2π×44 */
+    transition: stroke-dasharray 0.55s ease;
   }
   .ring-num {
-    position: relative; z-index: 1;
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 1;
     text-align: center;
     font-weight: 700;
   }
@@ -146,13 +156,13 @@
   .footer .dot.warn { background: var(--orange); box-shadow: 0 0 10px var(--orange); }
   @keyframes pulse { 50% { opacity: 0.35; } }
 
-  /* 数字/文字变化: 轻发光 + 微缩放 */
+  /* 数字变化: 仅光晕(无放大) */
   .bump {
     animation: bump 0.45s ease-out;
   }
   @keyframes bump {
-    0%   { transform: scale(1.07); text-shadow: 0 0 26px currentColor; }
-    100% { transform: scale(1); text-shadow: 0 0 0 transparent; }
+    0%   { text-shadow: 0 0 26px currentColor; }
+    100% { text-shadow: 0 0 0 transparent; }
   }
 </style>
 </head>
@@ -164,7 +174,16 @@
     <div class="card">
       <div class="card-top"><span class="dot" style="color:var(--purple);background:var(--purple)"></span>CPU<span class="tag">使用率</span></div>
       <div class="card-body">
-        <div class="ring" id="cpu-ring">
+        <div class="ring">
+          <svg viewBox="0 0 100 100" class="ring-svg">
+            <defs>
+              <linearGradient id="g-cpu" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#bd93f9"/><stop offset="100%" stop-color="#ff79c6"/>
+              </linearGradient>
+            </defs>
+            <circle class="rt" cx="50" cy="50" r="44"/>
+            <circle class="rp" id="cpu-prog" cx="50" cy="50" r="44" stroke="url(#g-cpu)"/>
+          </svg>
           <div class="ring-num"><span class="v" id="cpu">--</span><span class="u">%</span></div>
         </div>
         <div class="rows">
@@ -178,7 +197,16 @@
     <div class="card">
       <div class="card-top"><span class="dot" style="color:var(--cyan);background:var(--cyan)"></span>内存<span class="tag">已用</span></div>
       <div class="card-body">
-        <div class="ring" id="mem-ring">
+        <div class="ring">
+          <svg viewBox="0 0 100 100" class="ring-svg">
+            <defs>
+              <linearGradient id="g-mem" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#8be9fd"/><stop offset="100%" stop-color="#50fa7b"/>
+              </linearGradient>
+            </defs>
+            <circle class="rt" cx="50" cy="50" r="44"/>
+            <circle class="rp" id="mem-prog" cx="50" cy="50" r="44" stroke="url(#g-mem)"/>
+          </svg>
           <div class="ring-num"><span class="v" id="mem">--</span><span class="u">%</span></div>
         </div>
         <div class="rows">
@@ -192,7 +220,16 @@
     <div class="card">
       <div class="card-top"><span class="dot" style="color:var(--orange);background:var(--orange)"></span>CPU 温度<span class="tag">实时</span></div>
       <div class="card-body">
-        <div class="ring" id="temp-ring">
+        <div class="ring">
+          <svg viewBox="0 0 100 100" class="ring-svg">
+            <defs>
+              <linearGradient id="g-temp" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#8be9fd"/><stop offset="100%" stop-color="#50fa7b"/>
+              </linearGradient>
+            </defs>
+            <circle class="rt" cx="50" cy="50" r="44"/>
+            <circle class="rp" id="temp-prog" cx="50" cy="50" r="44" stroke="url(#g-temp)"/>
+          </svg>
           <div class="ring-num"><span class="v" id="temp">--</span><span class="u">°C</span></div>
         </div>
         <div class="rows">
@@ -206,7 +243,16 @@
     <div class="card">
       <div class="card-top"><span class="dot" style="color:var(--pink);background:var(--pink)"></span>状态<span class="tag">整体</span></div>
       <div class="card-body">
-        <div class="ring" id="stat-ring">
+        <div class="ring">
+          <svg viewBox="0 0 100 100" class="ring-svg">
+            <defs>
+              <linearGradient id="g-stat" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ff79c6"/><stop offset="100%" stop-color="#bd93f9"/>
+              </linearGradient>
+            </defs>
+            <circle class="rt" cx="50" cy="50" r="44"/>
+            <circle class="rp" id="stat-prog" cx="50" cy="50" r="44" stroke="url(#g-stat)"/>
+          </svg>
           <div class="ring-num"><span class="v" id="stat">--</span><span class="u">状态</span></div>
         </div>
         <div class="rows">
@@ -228,16 +274,36 @@
 (function () {
   "use strict";
   var API = "/api";
-  var LINE = "#44475a";
+  var CIRC = 276.46;   // 2π×44
   /* Dracula 渐变对 */
-  var G_CPU  = ["#bd93f9", "#ff79c6"];   // 紫 → 粉
-  var G_MEM  = ["#8be9fd", "#50fa7b"];   // 青 → 绿
-  var G_TEMP = ["#8be9fd", "#50fa7b"];   // 低温 青 → 绿
-  var G_TEMP_WARM = ["#ffb86c", "#ff79c6"]; // 中温 橙 → 粉
-  var G_TEMP_HOT  = ["#ff5555", "#ff6e6e"]; // 高温 红
-  var G_STAT = ["#ff79c6", "#bd93f9"];   // 粉 → 紫
+  var G_CPU  = ["#bd93f9", "#ff79c6"];
+  var G_MEM  = ["#8be9fd", "#50fa7b"];
+  var G_TEMP = ["#8be9fd", "#50fa7b"];
+  var G_TEMP_WARM = ["#ffb86c", "#ff79c6"];
+  var G_TEMP_HOT  = ["#ff5555", "#ff6e6e"];
+  var G_STAT = ["#ff79c6", "#bd93f9"];
 
   function el(id) { return document.getElementById(id); }
+
+  /* 渐变环形: SVG 圆头端点 + 动态渐变颜色 */
+  function setRing(progId, gradId, pct, colors) {
+    var prog = el(progId);
+    if (!prog) return;
+    pct = Math.max(0, Math.min(100, pct));
+    prog.style.strokeDasharray = (CIRC * pct / 100).toFixed(1) + " " + CIRC;
+    var g = el(gradId);
+    if (g && g.children.length >= 2) {
+      g.children[0].setAttribute("stop-color", colors[0]);
+      g.children[1].setAttribute("stop-color", colors[1]);
+    }
+  }
+
+  function setBar(id, pct, color) {
+    var b = el(id);
+    if (!b) return;
+    b.style.width = Math.max(0, Math.min(100, pct)) + "%";
+    b.style.background = color || "linear-gradient(90deg, #bd93f9, #ff79c6)";
+  }
 
   var _vals = {};   // 数字动画当前值
 
@@ -253,7 +319,7 @@
     function frame(ts) {
       if (!t0) t0 = ts;
       var p = Math.min(1, (ts - t0) / dur);
-      var e = 1 - Math.pow(1 - p, 3);            // easeOutCubic: 先快后缓
+      var e = 1 - Math.pow(1 - p, 3);            // easeOutCubic
       var v = from + (target - from) * e;
       node.textContent = v.toFixed(decimals) + (suffix || "");
       if (p < 1) requestAnimationFrame(frame);
@@ -261,7 +327,7 @@
     requestAnimationFrame(frame);
   }
 
-  /* 轻发光 + 微缩放 */
+  /* 变化光晕(无放大) */
   function bump(id) {
     var node = el(id);
     if (!node) return;
@@ -279,32 +345,13 @@
     bump(id);
   }
 
-  /* 渐变环形: pct 0-100, [c1, c2] 渐变段, 其余轨道色 */
-  function setRing(id, pct, grad) {
-    var r = el(id);
-    if (!r) return;
-    var deg = Math.max(0, Math.min(100, pct)) * 3.6;
-    r.style.background =
-      "conic-gradient(" + grad[0] + " 0deg, " + grad[1] + " " + deg + "deg, " +
-      LINE + " " + deg + "deg 360deg)";
-  }
-
-  function setBar(id, pct, color) {
-    var b = el(id);
-    if (!b) return;
-    b.style.width = Math.max(0, Math.min(100, pct)) + "%";
-    b.style.background = color || "linear-gradient(90deg, #bd93f9, #ff79c6)";
-  }
-
-  function fmtGB(n) { return (n / 1073741824).toFixed(1) + "G"; }
-
   function update(d) {
     if (!d || !d.ok) return;
 
     // CPU
     if (d.cpu) {
       animateNum("cpu", d.cpu.pct, 0, "");
-      setRing("cpu-ring", d.cpu.pct, G_CPU);
+      setRing("cpu-prog", "g-cpu", d.cpu.pct, G_CPU);
       animateNum("cpu-user", d.cpu.user, 1, "%");
       setBar("cpu-user-bar", d.cpu.user, "linear-gradient(90deg, #bd93f9, #ff79c6)");
       animateNum("cpu-sys", d.cpu.sys, 1, "%");
@@ -314,7 +361,7 @@
     // 内存
     if (d.mem) {
       animateNum("mem", d.mem.pct, 0, "");
-      setRing("mem-ring", d.mem.pct, G_MEM);
+      setRing("mem-prog", "g-mem", d.mem.pct, G_MEM);
       animateNum("mem-used", d.mem.used / 1073741824, 1, "G");
       setBar("mem-used-bar", d.mem.pct, "linear-gradient(90deg, #8be9fd, #50fa7b)");
       animateNum("mem-free", (d.mem.total - d.mem.used) / 1073741824, 1, "G");
@@ -325,12 +372,12 @@
     if (d.temp !== undefined) {
       if (d.temp === null) {
         setText("temp", "--");
-        setRing("temp-ring", 0, G_TEMP);
+        setRing("temp-prog", "g-temp", 0, G_TEMP);
         setText("temp-src", "请打开 MFC");
       } else {
         animateNum("temp", d.temp, 0, "");
         var g = d.temp >= 85 ? G_TEMP_HOT : (d.temp >= 70 ? G_TEMP_WARM : G_TEMP);
-        setRing("temp-ring", Math.min(100, d.temp), g);
+        setRing("temp-prog", "g-temp", Math.min(100, d.temp), g);
         el("temp").style.color = d.temp >= 85 ? "#ff5555" : (d.temp >= 70 ? "#ffb86c" : "#f8f8f2");
         setBar("temp-therm-bar", Math.min(100, d.temp), "linear-gradient(90deg, " + g[0] + ", " + g[1] + ")");
         setText("temp-src", "MFC · 实时");
@@ -341,7 +388,7 @@
     if (d.therm) {
       var isNormal = d.therm.indexOf("正常") !== -1;
       setText("stat", isNormal ? "正常" : "偏高");
-      setRing("stat-ring", isNormal ? 100 : 66, G_STAT);
+      setRing("stat-prog", "g-stat", isNormal ? 100 : 66, G_STAT);
       el("stat").style.color = isNormal ? "#f8f8f2" : "#ffb86c";
       setText("temp-therm", d.therm);
       el("temp-therm").style.color = isNormal ? "#50fa7b" : "#ffb86c";
