@@ -5,11 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mac mini · 监控</title>
 <style>
+  /* Dracula 主题 */
+  :root {
+    --bg0: #16161e; --bg1: #1e1f29; --bg2: #282a36; --line: #44475a;
+    --txt: #f8f8f2; --dim: #6272a4;
+    --pink: #ff79c6; --purple: #bd93f9; --cyan: #8be9fd;
+    --green: #50fa7b; --orange: #ffb86c; --red: #ff5555; --yellow: #f1fa8c;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
     width: 100%; height: 100%;
-    background: radial-gradient(1100px 700px at 50% 0%, #12201a 0%, #0a0f0d 55%, #070a09 100%);
-    color: #eafff0;
+    background: radial-gradient(1100px 700px at 50% 0%, #2d2f3d 0%, #1e1f29 55%, #16161e 100%);
+    color: var(--txt);
     font-family: "SF Mono", "Menlo", "PingFang SC", monospace;
     overflow: hidden;
     user-select: none;
@@ -32,98 +39,112 @@
   }
 
   .card {
-    background: linear-gradient(180deg, #141d18 0%, #0f1512 100%);
-    border: 1px solid #26392d;
+    background: linear-gradient(180deg, var(--bg2) 0%, var(--bg1) 100%);
+    border: 1px solid var(--line);
     border-radius: 18px;
-    padding: 18px 26px;
+    padding: 16px 22px;
     display: flex; flex-direction: column;
-    justify-content: space-between;
     min-width: 0; min-height: 0;
-    box-shadow: 0 6px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
   }
 
-  .label {
+  .card-top {
     display: flex; align-items: center; gap: 10px;
     font-size: 26px; font-weight: 700;
     letter-spacing: 4px;
-    color: #8fd8a4;
+    flex: 0 0 auto;
   }
-  .label .dot {
+  .card-top .dot {
     width: 12px; height: 12px; border-radius: 50%;
-    background: #58e08a;
-    box-shadow: 0 0 12px rgba(88,224,138,0.8);
+    box-shadow: 0 0 12px currentColor;
   }
-  .card.temp .label .dot { background: #4fd8eb; box-shadow: 0 0 12px rgba(79,216,235,0.8); }
-  .card.stat .label .dot { background: #b78cff; box-shadow: 0 0 12px rgba(183,140,255,0.8); }
+  .card-top .tag { font-size: 16px; color: var(--dim); letter-spacing: 1px; font-weight: 400; }
 
-  .value-line {
-    display: flex; align-items: baseline; gap: 10px;
+  .card-body {
     flex: 1 1 auto;
-    justify-content: center;
+    display: flex; align-items: center; gap: 20px;
     min-height: 0;
   }
-  .big {
-    font-size: 132px;
+
+  /* 环形进度（渐变） */
+  .ring {
+    width: 210px; height: 210px;
+    border-radius: 50%;
+    background: conic-gradient(var(--purple) 0deg, var(--pink) 0deg, var(--line) 0deg 360deg);
+    display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto;
+    position: relative;
+    filter: drop-shadow(0 0 14px rgba(189,147,249,0.35));
+  }
+  .ring::after {
+    content: ""; position: absolute;
+    inset: 16px;
+    border-radius: 50%;
+    background: var(--bg1);
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.55);
+  }
+  .ring-num {
+    position: relative; z-index: 1;
+    text-align: center;
     font-weight: 700;
-    line-height: 1;
-    color: #ffffff;
-    letter-spacing: 2px;
-    text-shadow: 0 0 22px rgba(88,224,138,0.35);
+  }
+  .ring-num .v {
+    font-size: 58px; line-height: 1;
+    color: var(--txt);
+    letter-spacing: 1px;
     font-variant-numeric: tabular-nums;
-    white-space: nowrap;
   }
-  .unit {
-    font-size: 40px;
-    color: #7fa08a;
-    font-weight: 600;
+  .ring-num .u {
+    font-size: 21px; color: var(--dim);
+    display: block; margin-top: 6px;
   }
-  .bigtxt {
-    font-size: 132px; font-weight: 700; line-height: 1;
-    color: #58e08a;
-    text-shadow: 0 0 22px rgba(88,224,138,0.4);
-  }
-  .bigtxt.warn { color: #ffd76e; text-shadow: 0 0 22px rgba(255,215,110,0.4); }
-  .bigtxt.crit { color: #ff6b6b; text-shadow: 0 0 22px rgba(255,107,107,0.4); }
 
-  .sub {
-    font-size: 26px;
-    color: #6f8f7c;
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 12px;
-    white-space: nowrap;
-    overflow: hidden;
+  /* 参数行 */
+  .rows {
+    flex: 1 1 auto;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    gap: 16px;
+    min-width: 0;
   }
-  .sub .em { color: #c8e8d2; }
+  .row {
+    display: grid;
+    grid-template-columns: 64px 1fr 40px;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .row .rl { font-size: 20px; color: var(--dim); white-space: nowrap; }
+  .row .rv {
+    font-size: 30px; font-weight: 600;
+    text-align: right; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .row .rv small { font-size: 16px; color: var(--dim); font-weight: 400; margin-left: 2px; }
+  .mini {
+    width: 40px; height: 7px;
+    background: var(--line); border-radius: 4px; overflow: hidden;
+    justify-self: end;
+  }
+  .mini i { display: block; height: 100%; border-radius: 4px; transition: width 0.5s ease; }
 
-  .bar {
-    width: 100%; height: 10px;
-    background: #1d2b22; border-radius: 5px; overflow: hidden;
-  }
-  .bar i {
-    display: block; height: 100%;
-    background: linear-gradient(90deg, #2f9e5c, #58e08a);
-    border-radius: 5px;
-    transition: width 0.6s ease;
-  }
-  .bar i.warn { background: linear-gradient(90deg, #d8a62e, #ffd76e); }
-  .bar i.crit { background: linear-gradient(90deg, #d23b3b, #ff6b6b); }
-
+  /* 底部状态条 */
   .footer {
     flex: 0 0 auto;
     display: flex; justify-content: space-between; align-items: center;
-    font-size: 20px; color: #6f8f7c;
+    font-size: 20px; color: var(--dim);
     letter-spacing: 1px;
-    border-top: 1px solid #1d3326;
+    border-top: 1px solid var(--line);
     padding-top: 10px;
   }
   .footer .dot {
     display: inline-block; width: 11px; height: 11px; border-radius: 50%;
-    background: #58e08a; margin-right: 9px;
+    background: var(--green); margin-right: 9px;
     animation: pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 10px var(--green);
   }
-  .footer .dot.warn { background: #ffd76e; }
+  .footer .dot.warn { background: var(--orange); box-shadow: 0 0 10px var(--orange); }
   @keyframes pulse { 50% { opacity: 0.35; } }
-  .footer .hint { color: #4d6b5a; font-size: 18px; }
 
   .flip {
     display: inline-block;
@@ -143,49 +164,64 @@
 
     <!-- CPU -->
     <div class="card">
-      <div class="label"><span class="dot"></span>CPU</div>
-      <div class="value-line">
-        <span class="big" id="cpu">--</span><span class="unit">%</span>
+      <div class="card-top"><span class="dot" style="color:var(--purple);background:var(--purple)"></span>CPU<span class="tag">使用率</span></div>
+      <div class="card-body">
+        <div class="ring" id="cpu-ring">
+          <div class="ring-num"><span class="v" id="cpu">--</span><span class="u">%</span></div>
+        </div>
+        <div class="rows">
+          <div class="row"><span class="rl">用户态</span><span class="rv" id="cpu-user">--</span><span class="mini"><i id="cpu-user-bar"></i></span></div>
+          <div class="row"><span class="rl">系统态</span><span class="rv" id="cpu-sys">--</span><span class="mini"><i id="cpu-sys-bar"></i></span></div>
+        </div>
       </div>
-      <div class="bar"><i id="cpu-bar" style="width:0%"></i></div>
-      <div class="sub"><span>用户 <span class="em" id="cpu-user">--</span></span><span>系统 <span class="em" id="cpu-sys">--</span></span></div>
     </div>
 
     <!-- 内存 -->
     <div class="card">
-      <div class="label"><span class="dot"></span>内存</div>
-      <div class="value-line">
-        <span class="big" id="mem">--</span><span class="unit">%</span>
+      <div class="card-top"><span class="dot" style="color:var(--cyan);background:var(--cyan)"></span>内存<span class="tag">已用</span></div>
+      <div class="card-body">
+        <div class="ring" id="mem-ring">
+          <div class="ring-num"><span class="v" id="mem">--</span><span class="u">%</span></div>
+        </div>
+        <div class="rows">
+          <div class="row"><span class="rl">已用</span><span class="rv" id="mem-used">--</span><span class="mini"><i id="mem-used-bar"></i></span></div>
+          <div class="row"><span class="rl">可用</span><span class="rv" id="mem-free">--</span><span class="mini"><i id="mem-free-bar"></i></span></div>
+        </div>
       </div>
-      <div class="bar"><i id="mem-bar" style="width:0%"></i></div>
-      <div class="sub"><span>已用 <span class="em" id="mem-used">--</span></span><span>可用 <span class="em" id="mem-free">--</span></span></div>
     </div>
 
     <!-- CPU 温度 -->
-    <div class="card temp">
-      <div class="label"><span class="dot"></span>CPU 温度</div>
-      <div class="value-line">
-        <span class="big" id="temp">--</span><span class="unit">°C</span>
+    <div class="card">
+      <div class="card-top"><span class="dot" style="color:var(--orange);background:var(--orange)"></span>CPU 温度<span class="tag">实时</span></div>
+      <div class="card-body">
+        <div class="ring" id="temp-ring">
+          <div class="ring-num"><span class="v" id="temp">--</span><span class="u">°C</span></div>
+        </div>
+        <div class="rows">
+          <div class="row"><span class="rl">散热</span><span class="rv" id="temp-therm">--</span><span class="mini"><i id="temp-therm-bar"></i></span></div>
+          <div class="row"><span class="rl">来源</span><span class="rv" id="temp-src">MFC</span><span class="mini" style="visibility:hidden"></span></div>
+        </div>
       </div>
-      <div class="bar"><i id="temp-bar" style="width:0%"></i></div>
-      <div class="sub"><span>来源</span><span class="em" id="temp-src">Macs Fan Control</span></div>
     </div>
 
     <!-- 状态 -->
-    <div class="card stat">
-      <div class="label"><span class="dot"></span>状态</div>
-      <div class="value-line">
-        <span class="bigtxt" id="stat">--</span>
+    <div class="card">
+      <div class="card-top"><span class="dot" style="color:var(--pink);background:var(--pink)"></span>状态<span class="tag">整体</span></div>
+      <div class="card-body">
+        <div class="ring" id="stat-ring">
+          <div class="ring-num"><span class="v" id="stat">--</span><span class="u">状态</span></div>
+        </div>
+        <div class="rows">
+          <div class="row"><span class="rl">负载</span><span class="rv" id="stat-load">--</span><span class="mini"><i id="stat-load-bar"></i></span></div>
+          <div class="row"><span class="rl">运行</span><span class="rv" id="stat-uptime">--</span><span class="mini" style="visibility:hidden"></span></div>
+        </div>
       </div>
-      <div class="bar"><i id="stat-bar" style="width:0%"></i></div>
-      <div class="sub"><span>负载 <span class="em" id="stat-load">--</span></span><span>运行 <span class="em" id="stat-uptime">--</span></span></div>
     </div>
 
   </div>
 
   <div class="footer">
     <div><span class="dot" id="therm-dot"></span><span id="therm">散热正常</span></div>
-    <div class="hint">温度读取 · 请保持 MFC 主窗口开启</div>
     <div id="up-foot"></div>
   </div>
 </div>
@@ -194,7 +230,14 @@
 (function () {
   "use strict";
   var API = "/api";
-  var COL_OK = "#58e08a", COL_WARN = "#ffd76e", COL_CRIT = "#ff6b6b";
+  var LINE = "#44475a";
+  /* Dracula 渐变对 */
+  var G_CPU  = ["#bd93f9", "#ff79c6"];   // 紫 → 粉
+  var G_MEM  = ["#8be9fd", "#50fa7b"];   // 青 → 绿
+  var G_TEMP = ["#8be9fd", "#50fa7b"];   // 低温 青 → 绿
+  var G_TEMP_WARM = ["#ffb86c", "#ff79c6"]; // 中温 橙 → 粉
+  var G_TEMP_HOT  = ["#ff5555", "#ff6e6e"]; // 高温 红
+  var G_STAT = ["#ff79c6", "#bd93f9"];   // 粉 → 紫
 
   function el(id) { return document.getElementById(id); }
 
@@ -208,19 +251,24 @@
     node.textContent = text;
   }
 
-  function setBar(id, pct, mode) {
+  /* 渐变环形: pct 0-100, [c1, c2] 渐变段, 其余轨道色 */
+  function setRing(id, pct, grad) {
+    var r = el(id);
+    if (!r) return;
+    var deg = Math.max(0, Math.min(100, pct)) * 3.6;
+    r.style.background =
+      "conic-gradient(" + grad[0] + " 0deg, " + grad[1] + " " + deg + "deg, " +
+      LINE + " " + deg + "deg 360deg)";
+  }
+
+  function setBar(id, pct, color) {
     var b = el(id);
     if (!b) return;
-    var p = Math.max(0, Math.min(100, pct));
-    b.style.width = p + "%";
-    b.className = mode || "";
+    b.style.width = Math.max(0, Math.min(100, pct)) + "%";
+    b.style.background = color || "linear-gradient(90deg, #bd93f9, #ff79c6)";
   }
 
   function fmtGB(n) { return (n / 1073741824).toFixed(1) + "G"; }
-
-  function colorFor(pct, hi, crit) {
-    return pct >= crit ? COL_CRIT : (pct >= hi ? COL_WARN : COL_OK);
-  }
 
   function update(d) {
     if (!d || !d.ok) return;
@@ -228,52 +276,59 @@
     // CPU
     if (d.cpu) {
       flip("cpu", d.cpu.pct.toFixed(0));
-      var c = colorFor(d.cpu.pct, 75, 90);
-      el("cpu").style.color = c;
-      setBar("cpu-bar", d.cpu.pct, d.cpu.pct >= 90 ? "crit" : (d.cpu.pct >= 75 ? "warn" : ""));
+      setRing("cpu-ring", d.cpu.pct, G_CPU);
       flip("cpu-user", d.cpu.user.toFixed(1) + "%");
+      setBar("cpu-user-bar", d.cpu.user, "linear-gradient(90deg, #bd93f9, #ff79c6)");
       flip("cpu-sys", d.cpu.sys.toFixed(1) + "%");
+      setBar("cpu-sys-bar", d.cpu.sys, "linear-gradient(90deg, #ff79c6, #bd93f9)");
     }
 
     // 内存
     if (d.mem) {
       flip("mem", d.mem.pct.toFixed(0));
-      var mc = colorFor(d.mem.pct, 75, 90);
-      el("mem").style.color = mc;
-      setBar("mem-bar", d.mem.pct, d.mem.pct >= 90 ? "crit" : (d.mem.pct >= 75 ? "warn" : ""));
+      setRing("mem-ring", d.mem.pct, G_MEM);
       flip("mem-used", fmtGB(d.mem.used));
+      setBar("mem-used-bar", d.mem.pct, "linear-gradient(90deg, #8be9fd, #50fa7b)");
       flip("mem-free", fmtGB(d.mem.total - d.mem.used));
+      setBar("mem-free-bar", 100 - d.mem.pct, "linear-gradient(90deg, #50fa7b, #8be9fd)");
     }
 
     // CPU 温度
     if (d.temp !== undefined) {
       if (d.temp === null) {
         flip("temp", "--");
-        setBar("temp-bar", 0);
-        el("temp").style.color = "#7fa08a";
-        flip("temp-src", "请打开 MFC 主窗口");
+        setRing("temp-ring", 0, G_TEMP);
+        flip("temp-src", "请打开 MFC");
       } else {
         flip("temp", d.temp.toFixed(0));
-        var tc = colorFor(d.temp, 80, 92);
-        el("temp").style.color = tc;
-        setBar("temp-bar", d.temp / 100 * 100, d.temp >= 92 ? "crit" : (d.temp >= 80 ? "warn" : ""));
-        flip("temp-src", "Macs Fan Control");
+        var g = d.temp >= 85 ? G_TEMP_HOT : (d.temp >= 70 ? G_TEMP_WARM : G_TEMP);
+        setRing("temp-ring", Math.min(100, d.temp), g);
+        el("temp").style.color = d.temp >= 85 ? "#ff5555" : (d.temp >= 70 ? "#ffb86c" : "#f8f8f2");
+        setBar("temp-therm-bar", Math.min(100, d.temp), "linear-gradient(90deg, " + g[0] + ", " + g[1] + ")");
+        flip("temp-src", "MFC · 实时");
       }
     }
 
     // 状态 / 散热
-    var isNormal = d.therm ? d.therm.indexOf("正常") !== -1 : true;
-    flip("stat", isNormal ? "正常" : "偏高");
-    var st = el("stat");
-    st.className = "bigtxt" + (isNormal ? "" : (d.therm && d.therm.indexOf("限频") !== -1 ? " crit" : " warn"));
-    setBar("stat-bar", isNormal ? 0 : 100, isNormal ? "" : "warn");
-    if (d.cpu) flip("stat-load", d.cpu.pct.toFixed(0) + "%");
+    if (d.therm) {
+      var isNormal = d.therm.indexOf("正常") !== -1;
+      flip("stat", isNormal ? "正常" : "偏高");
+      setRing("stat-ring", isNormal ? 100 : 66, G_STAT);
+      el("stat").style.color = isNormal ? "#f8f8f2" : "#ffb86c";
+      flip("temp-therm", d.therm);
+      el("temp-therm").style.color = isNormal ? "#50fa7b" : "#ffb86c";
+      setBar("temp-therm-bar", 100, "linear-gradient(90deg, #8be9fd, #50fa7b)");
+      el("therm").textContent = "散热: " + d.therm;
+      el("therm-dot").className = "dot" + (isNormal ? "" : " warn");
+    }
+    if (d.cpu) {
+      flip("stat-load", d.cpu.pct.toFixed(0) + "%");
+      setBar("stat-load-bar", d.cpu.pct, "linear-gradient(90deg, #ff79c6, #bd93f9)");
+    }
     if (d.uptime) {
       flip("stat-uptime", d.uptime);
       el("up-foot").textContent = d.uptime;
     }
-    el("therm").textContent = "散热: " + (d.therm || "正常");
-    el("therm-dot").className = "dot" + (isNormal ? "" : " warn");
   }
 
   function poll() {
