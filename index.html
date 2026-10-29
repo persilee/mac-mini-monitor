@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mac mini 监控 · wokyis 小屏</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: radial-gradient(1200px 700px at 50% 0%, #12201a 0%, #0a0f0d 55%, #070a09 100%);
+    color: #e8fff0;
+    font-family: "SF Mono", "Menlo", "PingFang SC", monospace;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .screen {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    padding: 16px 18px 12px;
+    gap: 12px;
+  }
+
+  /* 模块卡片 */
+  .grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 12px;
+    min-height: 0;
+  }
+  .card {
+    background: linear-gradient(180deg, #131c17 0%, #0f1512 100%);
+    border: 1px solid #24382c;
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex; flex-direction: column;
+    min-width: 0; min-height: 0;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .card-title {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #8fd8a4;
+    flex: 0 0 auto;
+  }
+  .card-title .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #58e08a;
+    box-shadow: 0 0 8px rgba(88,224,138,0.7);
+  }
+  .card:nth-child(3) .card-title .dot { background: #4fd8eb; box-shadow: 0 0 8px rgba(79,216,235,0.7); }
+  .card:nth-child(4) .card-title .dot { background: #ffd76e; box-shadow: 0 0 8px rgba(255,215,110,0.7); }
+  .card:nth-child(5) .card-title .dot { background: #b78cff; box-shadow: 0 0 8px rgba(183,140,255,0.7); }
+  .card:nth-child(6) .card-title .dot { background: #ff9d7d; box-shadow: 0 0 8px rgba(255,157,125,0.7); }
+
+  .card-body {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 8px;
+    min-height: 0;
+  }
+
+  /* 环形进度 */
+  .ring {
+    width: 112px; height: 112px;
+    border-radius: 50%;
+    background: conic-gradient(#58e08a 0%, #24382c 0);
+    display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto;
+    position: relative;
+  }
+  .ring::after {
+    content: ""; position: absolute;
+    inset: 10px;
+    border-radius: 50%;
+    background: #0f1512;
+  }
+  .ring-num {
+    position: relative; z-index: 1;
+    text-align: center;
+    font-weight: 700;
+  }
+  .ring-num .v { font-size: 40px; line-height: 1; color: #ffffff; }
+  .ring-num .u { font-size: 15px; color: #7fa08a; display: block; margin-top: 2px; }
+  .ring-num .bigtxt { font-size: 22px; line-height: 1.25; color: #fff; }
+  .ring-num .smtxt { font-size: 12px; color: #7fa08a; display: block; margin-top: 2px; }
+
+  /* 参数行 */
+  .rows {
+    flex: 1 1 auto;
+    display: flex; flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 58px 1fr 34px;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .row .rl { font-size: 12px; color: #6f8f7c; white-space: nowrap; }
+  .row .rv {
+    font-size: 19px; font-weight: 600; color: #eaffef;
+    text-align: right; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .row .rv small { font-size: 12px; color: #7fa08a; font-weight: 400; margin-left: 2px; }
+  .row .rv.warn { color: #ffd76e; }
+  .row .rv.crit { color: #ff6b6b; }
+  .mini {
+    width: 34px; height: 5px;
+    background: #24382c; border-radius: 3px; overflow: hidden;
+    justify-self: end;
+  }
+  .mini i { display: block; height: 100%; background: #58e08a; border-radius: 3px; transition: width .5s ease; }
+  .row .warn-txt { color: #ffd76e; }
+  .row .crit-txt { color: #ff6b6b; }
+
+  /* 底部状态条 */
+  .footer {
+    flex: 0 0 auto;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; color: #6f8f7c;
+    letter-spacing: 1px;
+    border-top: 1px solid #1d3326;
+    padding-top: 8px;
+  }
+  .footer .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: #58e08a; margin-right: 7px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+  .footer .dot.warn { background: #ffd76e; }
+  .footer .hint { color: #4d6b5a; font-size: 12px; }
+
+  /* 数字翻页动画 */
+  .flip {
+    display: inline-block;
+    animation: flipIn 0.38s ease-out;
+    transform-origin: 50% 50%;
+  }
+  @keyframes flipIn {
+    0%   { transform: rotateX(88deg); opacity: 0.2; }
+    60%  { transform: rotateX(-14deg); opacity: 1; }
+    100% { transform: rotateX(0); }
+  }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="grid">
+    <!-- CPU -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>CPU</div>
+      <div class="card-body">
+        <div class="ring" id="cpu-ring">
+          <div class="ring-num"><span class="v" id="cpu">--</span><span class="u">使用率</span></div>
+        </div>
+        <div class="rows">
+          <div class="row"><span class="rl">用户态</span><span class="rv" id="cpu-user">--</span><span class="mini"><i id="cpu-user-bar"></i></span></div>
+          <div class="row"><span class="rl">系统态</span><span class="rv" id="cpu-sys">--</span><span class="mini"><i id="cpu-sys-bar"></i></span></div>
+          <div class="row"><span class="rl">散热</span><span class="rv" id="cpu-therm">--</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">芯片</span><span class="rv" id="cpu-chip">M5 Pro</span><span class="mini" style="visibility:hidden"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 内存 -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>内存</div>
+      <div class="card-body">
+        <div class="ring" id="mem-ring">
+          <div class="ring-num"><span class="v" id="mem">--</span><span class="u">已用</span></div>
+        </div>
+        <div class="rows">
+          <div class="row"><span class="rl">已用</span><span class="rv" id="mem-used">--</span><span class="mini"><i id="mem-used-bar"></i></span></div>
+          <div class="row"><span class="rl">容量</span><span class="rv" id="mem-total">48 GB</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">压力</span><span class="rv" id="mem-press">--</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">可用</span><span class="rv" id="mem-free">--</span><span class="mini"><i id="mem-free-bar"></i></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 网络 -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>网络</div>
+      <div class="card-body">
+        <div class="ring" id="net-ring">
+          <div class="ring-num"><span class="v" id="net">--</span><span class="u">下载 MB/s</span></div>
+        </div>
+        <div class="rows">
+          <div class="row"><span class="rl">下载</span><span class="rv" id="net-down">--</span><span class="mini"><i id="net-down-bar"></i></span></div>
+          <div class="row"><span class="rl">上传</span><span class="rv" id="net-up">--</span><span class="mini"><i id="net-up-bar"></i></span></div>
+          <div class="row"><span class="rl">状态</span><span class="rv" id="net-status">已连接</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">接口</span><span class="rv" id="net-if">en*</span><span class="mini" style="visibility:hidden"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 磁盘 -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>磁盘</div>
+      <div class="card-body">
+        <div class="ring" id="disk-ring">
+          <div class="ring-num"><span class="v" id="disk">--</span><span class="u">Ti600 已用</span></div>
+        </div>
+        <div class="rows">
+          <div class="row"><span class="rl">Ti600</span><span class="rv" id="disk-main">--</span><span class="mini"><i id="disk-main-bar"></i></span></div>
+          <div class="row"><span class="rl">系统盘</span><span class="rv" id="disk-sys">--</span><span class="mini"><i id="disk-sys-bar"></i></span></div>
+          <div class="row"><span class="rl">容量</span><span class="rv" id="disk-cap">--</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">类型</span><span class="rv" id="disk-type">NVMe · 雷电5</span><span class="mini" style="visibility:hidden"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 系统 -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>系统</div>
+      <div class="card-body">
+        <div class="ring" id="sys-ring">
+          <div class="ring-num"><span class="bigtxt" id="sys-therm">--</span><span class="smtxt">散热状态</span></div>
+        </div>
+        <div class="rows">
+          <div class="row"><span class="rl">运行</span><span class="rv" id="sys-uptime">--</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">芯片</span><span class="rv" id="sys-chip">M5 Pro</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">核心</span><span class="rv" id="sys-cores">15</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">内存</span><span class="rv" id="sys-mem">48 GB</span><span class="mini" style="visibility:hidden"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 状态 -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>状态</div>
+      <div class="card-body">
+        <div class="ring" id="st-ring">
+          <div class="ring-num"><span class="v" id="st-load">--</span><span class="u">负载</span></div>
+        </div>
+        <div class="rows">
+          <div class="row"><span class="rl">内存压力</span><span class="rv" id="st-press">--</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">Ti600</span><span class="rv" id="st-disk">--</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">网络</span><span class="rv" id="st-net">--</span><span class="mini" style="visibility:hidden"></span></div>
+          <div class="row"><span class="rl">温度</span><span class="rv" id="st-temp" style="font-size:14px">见菜单栏 MFC</span><span class="mini" style="visibility:hidden"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div><span class="dot" id="therm-dot"></span><span id="therm">散热正常</span></div>
+    <div id="uptime">运行时长 --</div>
+    <div class="hint">温度读数 · Macs Fan Control 菜单栏</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var API = "/api";
+  var COL = "#58e08a", COL_WARN = "#ffd76e", COL_CRIT = "#ff6b6b", COL_DIM = "#24382c";
+  var netScale = 8; // 网络迷你条比例: x MB/s 满条
+
+  function el(id) { return document.getElementById(id); }
+
+  function flip(id, text) {
+    var node = el(id);
+    if (!node) return;
+    if (node.textContent === text) return;
+    node.classList.remove("flip");
+    void node.offsetWidth;
+    node.classList.add("flip");
+    node.textContent = text;
+  }
+
+  function fmtBytes(n) {
+    if (n >= 1099511627776) return (n / 1099511627776).toFixed(1) + " TB";
+    if (n >= 1073741824) return (n / 1073741824).toFixed(1) + " GB";
+    if (n >= 1048576) return (n / 1048576).toFixed(1) + " MB";
+    if (n >= 1024) return (n / 1024).toFixed(1) + " KB";
+    return n + " B";
+  }
+
+  function setRing(id, pct, color) {
+    var r = el(id);
+    if (!r) return;
+    r.style.background = "conic-gradient(" + (color || COL) + " " + Math.max(0, Math.min(100, pct)) + "%, " + COL_DIM + " 0)";
+  }
+
+  function setBar(id, pct) {
+    var b = el(id);
+    if (b) b.style.width = Math.max(0, Math.min(100, pct)) + "%";
+  }
+
+  function setColor(node, pct) {
+    if (!node) return;
+    node.classList.remove("warn", "crit");
+    if (pct >= 90) node.classList.add("crit");
+    else if (pct >= 75) node.classList.add("warn");
+  }
+
+  function mbps(v) { return (v / 1048576).toFixed(1); }
+
+  function update(d) {
+    if (!d || !d.ok) return;
+
+    // CPU
+    if (d.cpu) {
+      flip("cpu", d.cpu.pct.toFixed(0));
+      setRing("cpu-ring", d.cpu.pct);
+      setColor(el("cpu"), d.cpu.pct);
+      flip("cpu-user", d.cpu.user.toFixed(0) + "%");
+      flip("cpu-sys", d.cpu.sys.toFixed(0) + "%");
+      setBar("cpu-user-bar", d.cpu.user);
+      setBar("cpu-sys-bar", d.cpu.sys);
+    }
+
+    // 内存
+    if (d.mem) {
+      flip("mem", d.mem.pct.toFixed(0));
+      setRing("mem-ring", d.mem.pct);
+      setColor(el("mem"), d.mem.pct);
+      flip("mem-used", fmtBytes(d.mem.used));
+      setBar("mem-used-bar", d.mem.pct);
+      flip("mem-press", d.mem.press || "正常");
+      var freePct = Math.max(0, 100 - d.mem.pct);
+      flip("mem-free", fmtBytes(d.mem.total - d.mem.used));
+      setBar("mem-free-bar", freePct);
+    }
+
+    // 网络
+    if (d.net) {
+      flip("net", mbps(d.net.down));
+      flip("net-down", mbps(d.net.down) + " MB/s");
+      flip("net-up", mbps(d.net.up) + " MB/s");
+      setBar("net-down-bar", Math.min(100, d.net.down / 1048576 / netScale * 100));
+      setBar("net-up-bar", Math.min(100, d.net.up / 1048576 / netScale * 100));
+      setRing("net-ring", Math.min(100, Math.max(d.net.down, d.net.up) / 1048576 / netScale * 100), "#4fd8eb");
+      var total = d.net.down + d.net.up;
+      el("net-status").textContent = total > 0 ? "活跃" : "空闲";
+      el("net-status").classList.toggle("warn", total > 0);
+    }
+
+    // 磁盘
+    if (d.disk) {
+      var m = d.disk.main;
+      flip("disk", m.pct.toFixed(0));
+      setRing("disk-ring", m.pct, "#ffd76e");
+      setColor(el("disk"), m.pct);
+      flip("disk-main", fmtBytes(m.used) + " / " + fmtBytes(m.total));
+      setBar("disk-main-bar", m.pct);
+      var sysV = null;
+      for (var i = 0; i < d.disk.volumes.length; i++) {
+        if (d.disk.volumes[i].label === "系统盘") sysV = d.disk.volumes[i];
+      }
+      if (sysV) {
+        flip("disk-sys", fmtBytes(sysV.used) + " / " + fmtBytes(sysV.total));
+        setBar("disk-sys-bar", sysV.pct);
+        setColor(el("disk-sys"), sysV.pct);
+      }
+      flip("disk-cap", fmtBytes(d.disk.main.total));
+    }
+
+    // 系统 / 状态
+    if (d.therm) {
+      var isNormal = d.therm.indexOf("正常") !== -1;
+      flip("sys-therm", isNormal ? "正常" : "偏高");
+      el("sys-therm").classList.toggle("warn", !isNormal);
+      el("cpu-therm").textContent = d.therm;
+      el("cpu-therm").classList.toggle("warn-txt", !isNormal);
+      el("cpu-therm").classList.toggle("crit-txt", !isNormal && d.therm.indexOf("限频") !== -1);
+      el("therm").textContent = "散热：" + d.therm;
+      var dot = el("therm-dot");
+      dot.classList.toggle("warn", !isNormal);
+      setRing("sys-ring", isNormal ? 100 : 66, isNormal ? COL : COL_WARN);
+    }
+    if (d.uptime) {
+      flip("sys-uptime", d.uptime);
+      el("uptime").textContent = "运行时长 " + d.uptime;
+    }
+    if (d.cpu && d.mem) {
+      var load = d.cpu.pct;
+      flip("st-load", load.toFixed(0) + "%");
+      setRing("st-ring", load);
+      el("st-press").textContent = (d.mem.press || "正常") + " · " + d.mem.pct.toFixed(0) + "%";
+      el("st-disk").textContent = (d.disk ? d.disk.main.pct.toFixed(0) : "--") + "% 已用";
+      el("st-net").textContent = (d.net ? mbps(d.net.down) + " / " + mbps(d.net.up) : "--") + " MB/s";
+    }
+  }
+
+  function poll() {
+    fetch(API, { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(update)
+      .catch(function () {});
+  }
+
+  poll();
+  setInterval(poll, 1000);
+})();
+</script>
+</body>
+</html>
