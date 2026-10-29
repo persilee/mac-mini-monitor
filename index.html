@@ -146,15 +146,13 @@
   .footer .dot.warn { background: var(--orange); box-shadow: 0 0 10px var(--orange); }
   @keyframes pulse { 50% { opacity: 0.35; } }
 
-  .flip {
-    display: inline-block;
-    animation: flipIn 0.36s ease-out;
-    transform-origin: 50% 50%;
+  /* 数字/文字变化: 轻发光 + 微缩放 */
+  .bump {
+    animation: bump 0.45s ease-out;
   }
-  @keyframes flipIn {
-    0%   { transform: rotateX(88deg); opacity: 0.2; }
-    60%  { transform: rotateX(-14deg); opacity: 1; }
-    100% { transform: rotateX(0); }
+  @keyframes bump {
+    0%   { transform: scale(1.07); text-shadow: 0 0 26px currentColor; }
+    100% { transform: scale(1); text-shadow: 0 0 0 transparent; }
   }
 </style>
 </head>
@@ -241,14 +239,44 @@
 
   function el(id) { return document.getElementById(id); }
 
-  function flip(id, text) {
+  var _vals = {};   // 数字动画当前值
+
+  /* 平滑数字滚动: 旧值 -> 新值 300ms easeOutCubic */
+  function animateNum(id, target, decimals, suffix) {
+    var node = el(id);
+    if (!node) return;
+    var from = (_vals[id] !== undefined) ? _vals[id] : target;
+    if (_vals[id] !== undefined && Math.abs(from - target) < 0.05) return;
+    _vals[id] = target;
+    bump(id);
+    var t0 = null, dur = 300;
+    function frame(ts) {
+      if (!t0) t0 = ts;
+      var p = Math.min(1, (ts - t0) / dur);
+      var e = 1 - Math.pow(1 - p, 3);            // easeOutCubic: 先快后缓
+      var v = from + (target - from) * e;
+      node.textContent = v.toFixed(decimals) + (suffix || "");
+      if (p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* 轻发光 + 微缩放 */
+  function bump(id) {
+    var node = el(id);
+    if (!node) return;
+    node.classList.remove("bump");
+    void node.offsetWidth;
+    node.classList.add("bump");
+  }
+
+  /* 文本更新(带光晕) */
+  function setText(id, text) {
     var node = el(id);
     if (!node) return;
     if (node.textContent === text) return;
-    node.classList.remove("flip");
-    void node.offsetWidth;
-    node.classList.add("flip");
     node.textContent = text;
+    bump(id);
   }
 
   /* 渐变环形: pct 0-100, [c1, c2] 渐变段, 其余轨道色 */
@@ -275,59 +303,59 @@
 
     // CPU
     if (d.cpu) {
-      flip("cpu", d.cpu.pct.toFixed(0));
+      animateNum("cpu", d.cpu.pct, 0, "");
       setRing("cpu-ring", d.cpu.pct, G_CPU);
-      flip("cpu-user", d.cpu.user.toFixed(1) + "%");
+      animateNum("cpu-user", d.cpu.user, 1, "%");
       setBar("cpu-user-bar", d.cpu.user, "linear-gradient(90deg, #bd93f9, #ff79c6)");
-      flip("cpu-sys", d.cpu.sys.toFixed(1) + "%");
+      animateNum("cpu-sys", d.cpu.sys, 1, "%");
       setBar("cpu-sys-bar", d.cpu.sys, "linear-gradient(90deg, #ff79c6, #bd93f9)");
     }
 
     // 内存
     if (d.mem) {
-      flip("mem", d.mem.pct.toFixed(0));
+      animateNum("mem", d.mem.pct, 0, "");
       setRing("mem-ring", d.mem.pct, G_MEM);
-      flip("mem-used", fmtGB(d.mem.used));
+      animateNum("mem-used", d.mem.used / 1073741824, 1, "G");
       setBar("mem-used-bar", d.mem.pct, "linear-gradient(90deg, #8be9fd, #50fa7b)");
-      flip("mem-free", fmtGB(d.mem.total - d.mem.used));
+      animateNum("mem-free", (d.mem.total - d.mem.used) / 1073741824, 1, "G");
       setBar("mem-free-bar", 100 - d.mem.pct, "linear-gradient(90deg, #50fa7b, #8be9fd)");
     }
 
     // CPU 温度
     if (d.temp !== undefined) {
       if (d.temp === null) {
-        flip("temp", "--");
+        setText("temp", "--");
         setRing("temp-ring", 0, G_TEMP);
-        flip("temp-src", "请打开 MFC");
+        setText("temp-src", "请打开 MFC");
       } else {
-        flip("temp", d.temp.toFixed(0));
+        animateNum("temp", d.temp, 0, "");
         var g = d.temp >= 85 ? G_TEMP_HOT : (d.temp >= 70 ? G_TEMP_WARM : G_TEMP);
         setRing("temp-ring", Math.min(100, d.temp), g);
         el("temp").style.color = d.temp >= 85 ? "#ff5555" : (d.temp >= 70 ? "#ffb86c" : "#f8f8f2");
         setBar("temp-therm-bar", Math.min(100, d.temp), "linear-gradient(90deg, " + g[0] + ", " + g[1] + ")");
-        flip("temp-src", "MFC · 实时");
+        setText("temp-src", "MFC · 实时");
       }
     }
 
     // 状态 / 散热
     if (d.therm) {
       var isNormal = d.therm.indexOf("正常") !== -1;
-      flip("stat", isNormal ? "正常" : "偏高");
+      setText("stat", isNormal ? "正常" : "偏高");
       setRing("stat-ring", isNormal ? 100 : 66, G_STAT);
       el("stat").style.color = isNormal ? "#f8f8f2" : "#ffb86c";
-      flip("temp-therm", d.therm);
+      setText("temp-therm", d.therm);
       el("temp-therm").style.color = isNormal ? "#50fa7b" : "#ffb86c";
       setBar("temp-therm-bar", 100, "linear-gradient(90deg, #8be9fd, #50fa7b)");
       el("therm").textContent = "散热: " + d.therm;
       el("therm-dot").className = "dot" + (isNormal ? "" : " warn");
     }
     if (d.cpu) {
-      flip("stat-load", d.cpu.pct.toFixed(0) + "%");
+      animateNum("stat-load", d.cpu.pct, 0, "%");
       setBar("stat-load-bar", d.cpu.pct, "linear-gradient(90deg, #ff79c6, #bd93f9)");
     }
     if (d.uptime) {
-      flip("stat-uptime", d.uptime);
-      el("up-foot").textContent = d.uptime;
+      setText("stat-uptime", d.uptime);
+      setText("up-foot", d.uptime);
     }
   }
 
