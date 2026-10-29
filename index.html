@@ -82,9 +82,8 @@
     stroke: var(--line);
     stroke-width: 11;
   }
-  .ring-svg .rp {                          /* 进度(圆头) */
+  .ring-svg .rp {                          /* 进度(圆头)，stroke 用各自 HTML 属性引用 */
     fill: none;
-    stroke: url(#g-cpu);
     stroke-width: 11;
     stroke-linecap: round;                 /* 圆角端点 */
     stroke-dasharray: 0 276.46;            /* 周长 2π×44 */
@@ -291,11 +290,15 @@
     if (!prog) return;
     pct = Math.max(0, Math.min(100, pct));
     prog.style.strokeDasharray = (CIRC * pct / 100).toFixed(1) + " " + CIRC;
-    var g = el(gradId);
-    if (g && g.children.length >= 2) {
-      g.children[0].setAttribute("stop-color", colors[0]);
-      g.children[1].setAttribute("stop-color", colors[1]);
-    }
+    try {
+      var stops = el(gradId).querySelectorAll("stop");
+      if (stops.length >= 2) {
+        stops[0].setAttribute("stop-color", colors[0]);
+        stops[0].style.setProperty("stop-color", colors[0]);
+        stops[1].setAttribute("stop-color", colors[1]);
+        stops[1].style.setProperty("stop-color", colors[1]);
+      }
+    } catch (e) { /* 渐变颜色更新失败不影响主流程 */ }
   }
 
   function setBar(id, pct, color) {
