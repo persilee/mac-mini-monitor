@@ -56,15 +56,48 @@ _TEMP_CACHE = {"at": 0.0, "val": None}
 
 
 def parse_mfc_temp():
-    """读取 Macs Fan Control 主窗口传感器表（3 秒缓存）
+    """读取 Macs Fan Control 温度（3 秒缓存）
 
-    MFC 窗口 AX 结构: splitter group 1 -> table 1（两列: 传感器名/温度值）
-    读取 title 交替返回 [名称, 值, 名称, 值, ...]，优先取 CPU Core Average。
-    需要: 辅助功能已授权 + MFC 主窗口保持打开（可最小化）。
+    优先读菜单栏温度项（title 如 '74°C'，不依赖主窗口）；
+    菜单栏不可用时，兜底读主窗口传感器表。
+    需要: 辅助功能已授权 + MFC 在菜单栏常驻（主窗口可关闭）。
     """
     now = time.time()
     if now - _TEMP_CACHE["at"] < 3:
         return _TEMP_CACHE["val"]
+
+    val = _mfc_menu_temp()          # 菜单栏: 主窗口关闭也能读
+    if val is None:
+        val = _mfc_window_temp()    # 兜底: 主窗口传感器表
+
+    _TEMP_CACHE["at"] = now
+    _TEMP_CACHE["val"] = val
+    return val
+
+
+def _mfc_menu_temp():
+    """菜单栏2 的温度项，title 形如 '74°C'，无需主窗口"""
+    script = ('tell application "System Events" to tell process "Macs Fan Control" '
+              'to get title of every menu bar item of menu bar 2')
+    try:
+        p = subprocess.run(["osascript", "-e", script],
+                           capture_output=True, text=True, timeout=8)
+        if p.returncode == 0 and p.stdout.strip():
+            m = re.search(r"(\d+(?:\.\d+)?)\s*°", p.stdout)
+            if m:
+                return float(m.group(1))
+    except Exception:
+        pass
+    return None
+
+
+def _mfc_window_temp():
+    """(兜底) 读 MFC 主窗口传感器表
+
+    MFC 窗口 AX 结构: splitter group 1 -> table 1（两列: 传感器名/温度值）
+    读取 title 交替返回 [名称, 值, 名称, 值, ...]，优先取 CPU Core Average。
+    需要主窗口打开（可最小化）。
+    """
     script = ('tell application "System Events" to tell process "Macs Fan Control" '
               'to get title of every static text of table 1 of splitter group 1 of window 1')
     try:
@@ -102,8 +135,6 @@ def parse_mfc_temp():
                 val = float(pairs[0][1])
             except ValueError:
                 pass
-    _TEMP_CACHE["at"] = now
-    _TEMP_CACHE["val"] = val
     return val
 
 
